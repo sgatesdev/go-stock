@@ -1,12 +1,22 @@
 FROM golang:1.20-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
-COPY go.mod ./
-RUN go mod download && go mod verify
+COPY go.mod go.sum ./
+RUN go mod download
 
-COPY . .
-RUN go build -v -o /usr/local/bin/app ./...
+COPY . ./
 
-CMD ["app"]
+RUN go build -o /go-stock
+
+ENTRYPOINT ["/go-stock"]
+
+# docker build . --tag go-stock:0.05
+# docker save go-stock:0.05 | gzip > go-stock_latest.tar.gz
+# changed env to IP of postgres container 
+# docker load --input myimage_latest.tar.gz
+# docker run --env-file ./docker.env --net=host go-stock:0.04
+# since linux, can use host mode!
+# copy public.prices (id, created_at, updated_at, type, price, stock_id,received) FROM '/data/prices.csv' DELIMITER ',' CSV QUOTE '"' ESCAPE '''';
+# copy public.stocks (id, name, symbol, created_at, updated_at, poll) FROM '/data/stocks.csv' DELIMITER ',' CSV QUOTE '"' ESCAPE '''';

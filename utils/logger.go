@@ -1,41 +1,28 @@
 package utils
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 	"os"
+	"time"
 )
 
 func LogMsg(m string) {
-	var (
-		buf    bytes.Buffer
-		logger = log.New(&buf, "go-stock: ", log.Ldate|log.Ltime)
-	)
+	zone, err := time.LoadLocation(os.Getenv("TIMEZONE"))
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
-	logger.Print(m)
-	fmt.Print(&buf)
+	adjusted := time.Now().In(zone)
+
+	fmt.Println(time.Now().Format(time.RFC850) + ": adjusted time: " + adjusted.Format(time.RFC850) + " : " + m)
 }
 
 func LogFatal(m string) {
-	var (
-		buf    bytes.Buffer
-		logger = log.New(&buf, "go-stock: ", log.Ldate|log.Ltime)
-	)
-
-	logger.Print(m)
-	fmt.Print(&buf)
+	LogMsg(m)
 	os.Exit(1)
 }
 
 func LogError(m string) {
-	var (
-		buf    bytes.Buffer
-		logger = log.New(&buf, "go-stock: ", log.Ldate|log.Ltime)
-	)
-
-	logger.Print(m)
-	fmt.Print(&buf)
-
+	LogMsg(m)
 	increaseErrorCount()
 }

@@ -27,9 +27,9 @@ type StockHandler struct {
 }
 
 // NewStockHandler creates a new stock handler
-func NewStockHandler(db *gorm.DB) *StockHandler {
+func NewStockHandler(router *mux.Router, db *gorm.DB) *StockHandler {
 	return &StockHandler{
-		Router: mux.NewRouter(),
+		Router: router,
 		db:     db,
 	}
 }

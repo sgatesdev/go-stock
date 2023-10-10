@@ -1,24 +1,17 @@
 package scheduler
 
 import (
+	"os"
 	"time"
 
-	"github.com/go-co-op/gocron"
 	"gorm.io/gorm"
 	finnhub "samgates.io/go-stock/finnhub"
 	models "samgates.io/go-stock/models"
 	utils "samgates.io/go-stock/utils"
 )
 
-var Scheduler *gocron.Scheduler
-
-func InitScheduler() {
-	Scheduler = gocron.NewScheduler(time.UTC)
-}
-
 // starts
 func StartIntradayPolling(stocks *[]models.Stock, db *gorm.DB) {
-	// _, err := Scheduler.Every(30).Seconds().Tag("intraday").Do(finnhub.PollFinnhub, stocks, CheckDate, db)
 	go func() {
 		for {
 			finnhub.PollFinnhub(stocks, CheckDate, db)
@@ -28,8 +21,12 @@ func StartIntradayPolling(stocks *[]models.Stock, db *gorm.DB) {
 }
 
 func CheckDate() bool {
-	t := time.Now()
+	zone, err := time.LoadLocation(os.Getenv("TIMEZONE"))
+	if err != nil {
+		utils.LogFatal(err.Error())
+	}
 
+	t := time.Now().In(zone)
 	y := t.Year()
 	m := t.Month()
 	weekday := t.Weekday()

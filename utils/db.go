@@ -23,7 +23,7 @@ func SetupDB() *gorm.DB {
 		LogFatal(err.Error())
 	}
 
-	err = db.AutoMigrate(&models.Price{})
+	err = db.AutoMigrate(&models.Price{}, &models.User{}, &models.Stock{}, &models.Holding{})
 	if err != nil {
 		LogFatal(err.Error())
 	}

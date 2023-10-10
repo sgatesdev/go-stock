@@ -1,1 +1,4 @@
 envs.sh
+docker.env
+*.tar.gz
+*.csv

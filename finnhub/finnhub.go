@@ -20,9 +20,11 @@ var token string
 const maxThreads = 5
 
 func PollFinnhub(stocks *[]models.Stock, f func() bool, db *gorm.DB) {
-	// if !f() {
-	// 	return
-	// }
+	_, p := os.LookupEnv("DATE_OVERRIDE")
+
+	if !p && !f() {
+		return
+	}
 
 	var present bool
 	token, present = os.LookupEnv("FINNHUB_TOKEN")
@@ -60,6 +62,7 @@ func sendRequests(stocks []models.Stock, db *gorm.DB) {
 		return
 	} else {
 		// recursively call until we have processed all requests
+		time.Sleep(500 * time.Millisecond)
 		sendRequests(stocks[i:], db)
 		return
 	}
@@ -107,7 +110,19 @@ func fetchStockQuote(s models.Stock, db *gorm.DB) {
 	// update model
 	p.ID = uuid.NewString()
 	p.StockID = stock.ID
+
+	// check time to see if this is an end of day quote
 	p.Type = "intraday"
+
+	// make sure we don't have a duplicate
+	dbResponse := db.Where("stock_id = ? AND received = ?", p.StockID, p.Received).Find(&models.Price{})
+	if dbResponse.Error != nil && dbResponse.Error != gorm.ErrRecordNotFound {
+		utils.LogError(dbResponse.Error.Error())
+		return
+	} else if dbResponse.RowsAffected > 0 {
+		// duplicate
+		return
+	}
 
 	// save
 	db.Save(&p)
