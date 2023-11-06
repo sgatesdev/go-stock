@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"samgates.io/go-stock/models"
+	"samgates.io/go-stock/stream"
 	"samgates.io/go-stock/utils"
 )
 
@@ -126,4 +127,7 @@ func fetchStockQuote(s models.Stock, db *gorm.DB) {
 
 	// save
 	db.Save(&p)
+
+	// broadcast update to WS connections
+	stream.SendPriceUpdate(p)
 }

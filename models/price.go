@@ -10,9 +10,11 @@ type Price struct {
 	Received  int     `json:"t" gorm:"not null"`
 	Type      string  `json:"type" gorm:"not null"`
 	Price     float32 `json:"c" gorm:"column:price;not null"`
-	StockID   string  `json:"stock_id" gorm:"foreignKey:StockID"`
+	StockID   string  `json:"stockId" gorm:"foreignKey:StockID"`
 	Stock     Stock
 }
+
+// type can be: high, low, open, close
 
 // from finnhub docs
 // type Quote struct {

@@ -2,13 +2,21 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 	models "samgates.io/go-stock/models"
+	"samgates.io/go-stock/stream"
 )
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 // get prices by stock id
 type PriceHandler struct {
@@ -32,14 +40,29 @@ func (h *PriceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RegisterRoutes registers routes for the stock handler
 func (h *PriceHandler) RegisterRoutes() {
 	h.Router.HandleFunc("/prices/{stockId}", h.handleGetPrice).Methods("GET")
+	h.Router.HandleFunc("/ws/prices", h.handleStreamPrices).Methods("GET")
 }
 
 // handleGetStock handles getting a stock
 func (h *PriceHandler) handleGetPrice(w http.ResponseWriter, r *http.Request) {
 	stockId := mux.Vars(r)["stockId"]
 
+	qp := r.URL.Query()
+	today := qp.Get("today")
+
 	prices := []models.Price{}
-	res := h.db.Where("stock_id = ?", stockId).Find(&prices)
+
+	where := "stock_id = ?"
+	whereArgs := []interface{}{stockId}
+
+	var res *gorm.DB
+	if today == "true" {
+		where += " AND DATE(created_at) = ?"
+		t := time.Now().Format("2006-01-02")
+		whereArgs = append(whereArgs, t)
+	}
+
+	res = h.db.Where(where, whereArgs...).Find(&prices)
 
 	if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -54,6 +77,58 @@ func (h *PriceHandler) handleGetPrice(w http.ResponseWriter, r *http.Request) {
 
 	pLite := transformPrices(prices)
 	json.NewEncoder(w).Encode(&pLite)
+}
+
+// router.HandleFunc("/echo", echo)
+func (h *PriceHandler) handleStreamPrices(w http.ResponseWriter, r *http.Request) {
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("upgrade:", err)
+		return
+	}
+
+	// register session so polling will broadcast updates
+	sessionId := stream.AddConnection(c)
+
+	defer func() {
+		c.Close()
+		stream.RemoveConnection(sessionId)
+	}()
+
+	// testing
+	// go func() {
+	// 	for {
+	// 		rand.Seed(time.Now().UnixNano())
+
+	// 		// test to see if web sockets will broadcast updates
+	// 		time.Sleep(1 * time.Second)
+	// 		stocks := []models.Stock{}
+	// 		h.db.Find(&stocks).Where("poll = ?", true)
+	// 		for _, s := range stocks {
+	// 			randomInt := rand.Intn(100)
+	// 			p := models.Price{
+	// 				ID:      uuid.NewString(),
+	// 				StockID: s.ID,
+	// 				Price:   float32(randomInt),
+	// 			}
+	// 			stream.SendPriceUpdate(p)
+	// 		}
+	// 	}
+	// }()
+
+	for {
+		mt, message, err := c.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			break
+		}
+		log.Printf("recv: %s", message)
+		err = c.WriteMessage(mt, message)
+		if err != nil {
+			log.Println("write:", err)
+			break
+		}
+	}
 }
 
 type StockPrice struct {
