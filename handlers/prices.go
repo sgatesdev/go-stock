@@ -2,11 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
+	"os"
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
@@ -96,25 +100,29 @@ func (h *PriceHandler) handleStreamPrices(w http.ResponseWriter, r *http.Request
 	}()
 
 	// testing
-	// go func() {
-	// 	for {
-	// 		rand.Seed(time.Now().UnixNano())
+	websocketTest, ok := os.LookupEnv("WEBSOCKET_TEST")
+	if ok && websocketTest == "true" {
+		fmt.Println("WEBSOCKET_TEST")
+		go func() {
+			for {
+				rand.Seed(time.Now().UnixNano())
 
-	// 		// test to see if web sockets will broadcast updates
-	// 		time.Sleep(1 * time.Second)
-	// 		stocks := []models.Stock{}
-	// 		h.db.Find(&stocks).Where("poll = ?", true)
-	// 		for _, s := range stocks {
-	// 			randomInt := rand.Intn(100)
-	// 			p := models.Price{
-	// 				ID:      uuid.NewString(),
-	// 				StockID: s.ID,
-	// 				Price:   float32(randomInt),
-	// 			}
-	// 			stream.SendPriceUpdate(p)
-	// 		}
-	// 	}
-	// }()
+				// test to see if web sockets will broadcast updates
+				time.Sleep(3 * time.Second)
+				stocks := []models.Stock{}
+				h.db.Find(&stocks).Where("poll = ?", true)
+				for _, s := range stocks {
+					randomInt := rand.Intn(100)
+					p := models.Price{
+						ID:      uuid.NewString(),
+						StockID: s.ID,
+						Price:   float32(randomInt),
+					}
+					stream.SendPriceUpdate(p)
+				}
+			}
+		}()
+	}
 
 	for {
 		mt, message, err := c.ReadMessage()
