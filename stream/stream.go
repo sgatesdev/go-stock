@@ -69,9 +69,8 @@ func AddConnection(conn *websocket.Conn) string {
 	prices := []models.Price{}
 	for _, s := range stocks {
 		ps := []models.Price{}
-		// today := time.Now().Format("2006-01-02")
-		date := time.Date(2023, time.November, 20, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
-		db.Where("stock_id = ? AND DATE(created_at) = ?", s.ID, date).Order("created_at asc").Find(&ps)
+		today := time.Now().Format("2006-01-02")
+		db.Where("stock_id = ? AND DATE(created_at) = ?", s.ID, today).Order("created_at asc").Find(&ps)
 		prices = append(prices, ps...)
 	}
 
