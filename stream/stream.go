@@ -65,6 +65,21 @@ func AddConnection(conn *websocket.Conn) string {
 		fmt.Println(err)
 	}
 
+	// get initial prices
+	prices := []models.Price{}
+	for _, s := range stocks {
+		ps := []models.Price{}
+		// today := time.Now().Format("2006-01-02")
+		date := time.Date(2023, time.November, 20, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+		db.Where("stock_id = ? AND DATE(created_at) = ?", s.ID, date).Order("created_at asc").Find(&ps)
+		prices = append(prices, ps...)
+	}
+
+	// send initial prices
+	if len(prices) > 0 {
+		conn.WriteJSON(prices)
+	}
+
 	StockToConnectionMap.mutex.Lock()
 	for _, s := range stocks {
 		if StockToConnectionMap.stockToConnection[s.ID] == nil {
@@ -139,6 +154,6 @@ func GetSessionId() string {
 
 func getStocks() ([]models.Stock, error) {
 	stocks := []models.Stock{}
-	err := db.Table("stocks").Find(&stocks).Error
+	err := db.Table("stocks").Find(&stocks).Where("poll = ?", true).Error
 	return stocks, err
 }
