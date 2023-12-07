@@ -20,7 +20,9 @@ func StartIntradayPolling(stocks *[]models.Stock, db *gorm.DB) {
 	}()
 }
 
-func CheckDate() bool {
+// returns true and the type of price to fetch
+// closing prices are fetched 30 mins before market open
+func CheckDate() (bool, string) {
 	zone, err := time.LoadLocation(os.Getenv("TIMEZONE"))
 	if err != nil {
 		utils.LogFatal(err.Error())
@@ -34,22 +36,28 @@ func CheckDate() bool {
 	day := t.Day()
 	h := t.Hour()
 
+	// DO NOT POLL
 	if weekday == time.Saturday || weekday == time.Sunday {
 		// StopIntradayPolling()
 		utils.LogMsg("Market closed (weekend)")
-		return false
-	} else if h < 9 || (h == 9 && minutes < 30) || h >= 16 {
+		return false, ""
+	} else if h < 9 || h >= 16 {
 		utils.LogMsg("Market closed (hours)")
-		return false
+		return false, ""
 	} else {
 		for _, d := range *closeDates() {
 			if y == d.year && m == d.month && day == d.day && h >= d.hour {
 				utils.LogMsg("Market closed (holiday)")
-				return false
+				return false, ""
 			}
 		}
 	}
-	return true
+
+	// POLL
+	if h == 9 && minutes < 30 {
+		return true, "last_close"
+	}
+	return true, "intraday"
 }
 
 func closeDates() *[]closeDate {

@@ -20,10 +20,12 @@ var token string
 
 const maxThreads = 5
 
-func PollFinnhub(stocks *[]models.Stock, f func() bool, db *gorm.DB) {
+func PollFinnhub(stocks *[]models.Stock, checkDate func() (bool, string), db *gorm.DB) {
 	_, p := os.LookupEnv("DATE_OVERRIDE")
 
-	if !p && !f() {
+	// get the type of price to fetch
+	ok, t := checkDate()
+	if !p && !ok {
 		return
 	}
 
@@ -34,10 +36,10 @@ func PollFinnhub(stocks *[]models.Stock, f func() bool, db *gorm.DB) {
 	}
 
 	// send requests as literals vs. pointers, so we can recursively call
-	sendRequests(*stocks, db)
+	sendRequests(*stocks, db, t)
 }
 
-func sendRequests(stocks []models.Stock, db *gorm.DB) {
+func sendRequests(stocks []models.Stock, db *gorm.DB, t string) {
 	var wg sync.WaitGroup
 	var i int
 	for n, s := range stocks {
@@ -50,10 +52,10 @@ func sendRequests(stocks []models.Stock, db *gorm.DB) {
 		}
 
 		wg.Add(1)
-		go func(innerS models.Stock) {
+		go func(innerS models.Stock, innerT string) {
 			defer wg.Done()
-			fetchStockQuote(innerS, db)
-		}(s)
+			fetchStockQuote(innerS, db, innerT)
+		}(s, t)
 	}
 
 	wg.Wait()
@@ -64,12 +66,12 @@ func sendRequests(stocks []models.Stock, db *gorm.DB) {
 	} else {
 		// recursively call until we have processed all requests
 		time.Sleep(500 * time.Millisecond)
-		sendRequests(stocks[i:], db)
+		sendRequests(stocks[i:], db, t)
 		return
 	}
 }
 
-func fetchStockQuote(s models.Stock, db *gorm.DB) {
+func fetchStockQuote(s models.Stock, db *gorm.DB, t string) {
 	c := http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -111,17 +113,17 @@ func fetchStockQuote(s models.Stock, db *gorm.DB) {
 	// update model
 	p.ID = uuid.NewString()
 	p.StockID = stock.ID
-
-	// check time to see if this is an end of day quote
-	p.Type = "intraday"
+	p.Type = t
 
 	// make sure we don't have a duplicate
-	dbResponse := db.Where("stock_id = ? AND received = ?", p.StockID, p.Received).Find(&models.Price{})
+	dbResponse := db.Where("stock_id = ? AND received = ? AND type = ?", p.StockID, p.Received, t).Find(&models.Price{})
 	if dbResponse.Error != nil && dbResponse.Error != gorm.ErrRecordNotFound {
 		utils.LogError(dbResponse.Error.Error())
 		return
 	} else if dbResponse.RowsAffected > 0 {
 		// duplicate
+		msg := fmt.Sprintf("Duplicate %s price for %s at %d", t, p.StockID, p.Received)
+		utils.LogMsg(msg)
 		return
 	}
 
