@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -112,11 +113,14 @@ func (h *PriceHandler) handleStreamPrices(w http.ResponseWriter, r *http.Request
 				stocks := []models.Stock{}
 				h.db.Find(&stocks).Where("poll = ?", true)
 				for _, s := range stocks {
-					randomInt := rand.Intn(100)
+					lastPrice := models.Price{}
+					h.db.Where("stock_id = ? AND type = ?", s.ID, "intraday").Order("created_at desc").First(&lastPrice)
+					r := float32(math.Round(float64(lastPrice.Price+(rand.Float32()-0.5)*2)*100) / 100)
+					fmt.Println(lastPrice.Price, r)
 					p := models.Price{
 						ID:      uuid.NewString(),
 						StockID: s.ID,
-						Price:   float32(randomInt),
+						Price:   r,
 					}
 					stream.SendPriceUpdate(p)
 				}
