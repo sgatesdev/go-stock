@@ -6,15 +6,17 @@
 
 go-stock is a simple app for streaming real-time stock data and performing basic time-series analysis. The goal is to leverage the power of FinnHub.io's [free stock API](https://finnhub.io/) to provide a simple, easy to use streaming stock dashboard. This application is a personal project and is designed solely for my use. The application utilizes Go on the backend and TypeScript React on the frontend.
 
-The backend uses Go to execute the fetching of live price data on a set interval. Go threads are used to concurrently poll the API for fresh stock price data. The backend does two things: 
+The backend is written in Go. During trading hours, the scheduler polls for stock price data on an interval. When data is received, the price updates are handled as follows:
 
-1. Fetches and stores new price data for historical analysis
-2. Streams price updates to the frontend dashboard, if connected
+1. Store price updates for historical analysis
+2. Stream price updates to the frontend dashboard, if connected
 
-Websockets are used to stream price updates. React Echarts is used to provide charting capability - both on the live dashboard page and on the historical analysis page. The historical analysis page permits me to specify a time interval I wish to chart, so I can see price fluctuations during that time period. I also leverage Echarts to provide some basic information about the data itself, such as min and max prices during the chosen time period.
+The backend permits web socket connections on a designated endpoint. Once the connection is established, the backend tracks which stocks have active web socket connections. As price updates come in, the updates are send to each web socket connection by stock. This is to ensure (limited) scalability. The backend can safely handle multiple websocket connections, efficiently broadcasting updates for overlapping or different stocks. 
 
-There are also various CRUD endpoints for managing which stocks I want to poll, and for fetching price information by stock. 
+There are CRUD endpoints for stocks and a GET endpoint for price data.
 
 ## Deployment
 
-The application is deployed on a home server and fetches data autonomously when markets are open. It can run in a Docker container or as a standalone Go executable. Scripts are included in the repo to make deployment and release easier. All data is stored in a Postgres database that is also running in a Docker container on the same Ubuntu server.
+The application is deployed on a home server and fetches data autonomously when markets are open. It can run in a Docker container or as a standalone Go executable. It runs as a Docker container on the server. 
+
+Scripts are included in the repo to facilitate deployment and release. All data is stored in a Postgres database that is also running in a Docker container on the same Ubuntu server.
