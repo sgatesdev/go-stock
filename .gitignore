@@ -2,3 +2,5 @@ envs.sh
 docker.env
 *.tar.gz
 *.csv
+docker_images/*.gz
+.DS_Store
