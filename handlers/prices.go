@@ -106,8 +106,6 @@ func (h *PriceHandler) handleStreamPrices(w http.ResponseWriter, r *http.Request
 		fmt.Println("WEBSOCKET_TEST")
 		go func() {
 			for {
-				rand.Seed(time.Now().UnixNano())
-
 				// test to see if web sockets will broadcast updates
 				time.Sleep(3 * time.Second)
 				stocks := []models.Stock{}

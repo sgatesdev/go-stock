@@ -1,10 +1,10 @@
-# Wordfun!
+# go-stock
 
 ![License badge](https://img.shields.io/badge/license-MIT-green)
 
 ## Description
 
-Go-Stock is a stock analytics dashboard project that I have been working on in my spare time. The goal is to leverage the power of FinnHub.io's [free stock API](https://finnhub.io/) tier to provide a simple, easy to use streaming stock dashboard. This application is a personal project and is designed solely for my use. The application utilizes Go on the backend and TypeScript React on the frontend.
+go-stock is a simple app for streaming real-time stock data and performing basic time-series analysis. The goal is to leverage the power of FinnHub.io's [free stock API](https://finnhub.io/) to provide a simple, easy to use streaming stock dashboard. This application is a personal project and is designed solely for my use. The application utilizes Go on the backend and TypeScript React on the frontend.
 
 The backend uses Go to execute the fetching of live price data on a set interval. Go threads are used to concurrently poll the API for fresh stock price data. The backend does two things: 
 
